@@ -33,7 +33,7 @@ export default function RootLayout({
           fontSourceCodePro.variable
         )}
       >
-        {children}
+        <main>{children}</main>
         <Toaster />
       </body>
     </html>
