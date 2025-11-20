@@ -80,35 +80,24 @@ export async function performMasking(
     const originalContent = input.logContent;
     const maskedLog = redactSensitiveData(originalContent);
     
-    // To create the list of redactions, we need to find what was changed.
-    // This is a simplified way to do it. A more robust solution might
-    // involve getting the matches from the regex function itself.
     const redactions: { original: string; masked: string }[] = [];
-    const originalLines = originalContent.split('\n');
-    const maskedLines = maskedLog.split('\n');
-
-    originalLines.forEach((originalLine, i) => {
-      const maskedLine = maskedLines[i];
-      if (originalLine !== maskedLine) {
-        const originalWords = originalLine.split(/(\s+|\[|\]|,|\(|\))/);
-        const maskedWords = maskedLine.split(/(\s+|\[|\]|,|\(|\))/);
-        originalWords.forEach((word, j) => {
-          if (word !== maskedWords[j] && !word.startsWith('[')) {
-             const maskedWord = maskedWords[j];
-             if(maskedWord && maskedWord.startsWith('[')) {
-                redactions.push({ original: word, masked: maskedWord });
-             }
-          }
+    
+    // This is a more robust way to identify what was masked without
+    // relying on complex and brittle string comparisons.
+    if (originalContent !== maskedLog) {
+      const redactionTypes = new Set(maskedLog.match(/\[REDACTED_[A-Z_]+\]/g));
+      
+      redactionTypes.forEach(type => {
+        redactions.push({
+          original: `Value of type ${type.replace('[REDACTED_', '').replace(']', '')}`,
+          masked: type
         });
-      }
-    });
+      });
+    }
 
-    // A simple heuristic to find changed values if line-by-line fails.
-    if(redactions.length === 0 && originalContent !== maskedLog){
-        const uniqueRedactions = [...new Set(maskedLog.match(/\[REDACTED_[A-Z_]+\]/g))];
-        uniqueRedactions.forEach(masked => {
-            redactions.push({original: "Value obscured by redaction", masked: masked})
-        })
+    if (redactions.length === 0 && originalContent !== maskedLog) {
+      // Fallback for cases where redaction happened but wasn't caught by the set
+      redactions.push({ original: "Sensitive value", masked: "[REDACTED]" });
     }
 
     return { maskedLog, redactions };
