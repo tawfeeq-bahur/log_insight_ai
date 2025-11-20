@@ -32,6 +32,7 @@ import {
   CheckCircle,
   BrainCircuit,
   Lightbulb,
+  Wrench,
 } from 'lucide-react';
 
 interface AnalysisDashboardProps {
@@ -79,7 +80,7 @@ export default function AnalysisDashboard({ result }: AnalysisDashboardProps) {
           <CardHeader>
             <div className="flex items-center gap-3">
               <BarChart className="h-6 w-6" />
-              <CardTitle>1️⃣ Overview Summary</CardTitle>
+              <CardTitle>1?? Overview Summary</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -101,10 +102,11 @@ export default function AnalysisDashboard({ result }: AnalysisDashboardProps) {
           <CardHeader>
             <div className="flex items-center gap-3">
               <BrainCircuit className="h-6 w-6" />
-              <CardTitle>2️⃣ Categorized Log Summary</CardTitle>
+              <CardTitle>2?? Categorized Log Summary</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            <CategorySection title="Application & System" items={categorizedLogSummary.applicationAndSystem} icon={FileTerminal} />
             <CategorySection title="Authentication" items={categorizedLogSummary.authenticationAndAuthorization} icon={KeyRound} />
             <CategorySection title="Database" items={categorizedLogSummary.database} icon={Database} />
             <CategorySection title="Payments" items={categorizedLogSummary.payments} icon={CreditCard} />
@@ -120,7 +122,7 @@ export default function AnalysisDashboard({ result }: AnalysisDashboardProps) {
           <CardHeader>
             <div className="flex items-center gap-3">
               <ServerCrash className="h-6 w-6 text-destructive" />
-              <CardTitle>3️⃣ Error Log Extraction</CardTitle>
+              <CardTitle>3?? Error Log Extraction</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -133,8 +135,17 @@ export default function AnalysisDashboard({ result }: AnalysisDashboardProps) {
                         <span className='font-semibold'>{error.service}</span> - <span className='text-sm text-muted-foreground truncate'>{error.message}</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className='font-code text-xs bg-muted/50 p-4 rounded-md'>
-                    {error.details}
+                  <AccordionContent className='space-y-4'>
+                    <div className='font-code text-xs bg-muted/50 p-4 rounded-md'>
+                      {error.details}
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                        <Wrench className="h-5 w-5 mt-1 text-primary" />
+                        <div>
+                            <h4 className="font-semibold text-primary">Suggested Solution</h4>
+                            <p className="text-sm text-muted-foreground">{error.solution}</p>
+                        </div>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
               ))}
@@ -147,7 +158,7 @@ export default function AnalysisDashboard({ result }: AnalysisDashboardProps) {
           <CardHeader>
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-6 w-6 text-accent" />
-              <CardTitle>4️⃣ Security Alerts</CardTitle>
+              <CardTitle>4?? Security Alerts</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -172,7 +183,7 @@ export default function AnalysisDashboard({ result }: AnalysisDashboardProps) {
           <CardHeader>
             <div className="flex items-center gap-3">
               <BarChart className="h-6 w-6" />
-              <CardTitle>5️⃣ Key Statistics</CardTitle>
+              <CardTitle>5?? Key Statistics</CardTitle>
             </div>
           </CardHeader>
           <CardContent className='grid grid-cols-2 gap-4'>
@@ -204,7 +215,7 @@ export default function AnalysisDashboard({ result }: AnalysisDashboardProps) {
           <CardHeader>
             <div className="flex items-center gap-3">
               <Lightbulb className="h-6 w-6 text-primary" />
-              <CardTitle>6️⃣ Final Conclusion</CardTitle>
+              <CardTitle>6?? Final Conclusion</CardTitle>
             </div>
           </CardHeader>
           <CardContent>

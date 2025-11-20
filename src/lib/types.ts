@@ -14,18 +14,31 @@ const OverviewSummarySchema = z.object({
   infoLogs: z.number().describe('Number of informational logs'),
   errorLogs: z.number().describe('Number of error logs'),
   securityAlerts: z.number().describe('Number of security or critical alerts'),
+  dbFailures: z.number().describe('Number of database failures'),
+  paymentFailures: z.number().describe('Number of payment failures'),
+  authFailures: z.number().describe('Number of authentication failures'),
+  fileUploadFailures: z.number().describe('Number of file/upload failures'),
+  apiFailures: z.number().describe('Number of API failures'),
+  suspiciousRequests: z.number().describe('Number of suspicious request attempts'),
 });
 
-const CategorizedLogSchema = z.object({
-  category: z.string().describe("The high-level category of the log entry (e.g., 'Authentication', 'Database', 'Payments')."),
-  summary: z.string().describe("A one-sentence summary of the log entry."),
-});
+const CategorizedLogSummarySchema = z.object({
+    applicationAndSystem: z.array(z.string()).describe('Summary of application and system-level logs (startup, config, etc.)'),
+    authenticationAndAuthorization: z.array(z.string()).describe('Summary of authentication and authorization logs (logins, tokens).'),
+    database: z.array(z.string()).describe('Summary of database-related logs'),
+    payments: z.array(z.string()).describe('Summary of payment-related logs'),
+    api: z.array(z.string()).describe('Summary of API-related logs'),
+    fileUpload: z.array(z.string()).describe('Summary of file upload-related logs'),
+    security: z.array(z.string()).describe('Summary of security-related logs'),
+    userActions: z.array(z.string()).describe('Summary of user action-related logs'),
+  });
 
 const ErrorLogSchema = z.object({
   severity: z.enum(['Critical', 'High', 'Medium', 'Low']).describe('The severity of the error.'),
   service: z.string().describe("The service or component where the error occurred (e.g., 'Database', 'Payment Gateway')."),
   message: z.string().describe('The primary error message.'),
   details: z.string().optional().describe('Any additional technical details or context about the error.'),
+  solution: z.string().describe('A clear, actionable suggestion on how to fix the error.'),
 });
 
 const SecurityAlertSchema = z.object({
@@ -50,7 +63,7 @@ const ConclusionSchema = z.object({
 
 export const AnalysisResultSchema = z.object({
   overviewSummary: OverviewSummarySchema,
-  categorizedLogSummary: z.array(CategorizedLogSchema).describe("A summary of log entries categorized by their function."),
+  categorizedLogSummary: CategorizedLogSummarySchema,
   errorLogExtraction: z.array(ErrorLogSchema).describe("A detailed extraction of all error logs."),
   securityAlerts: z.array(SecurityAlertSchema).describe("A list of all identified security alerts."),
   keyStatistics: StatisticsSchema,
