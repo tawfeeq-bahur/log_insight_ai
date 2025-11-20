@@ -16,7 +16,8 @@ const OverviewSummarySchema = z.object({
 });
 
 const CategorizedLogSummarySchema = z.object({
-  authentication: z.array(z.string()).describe('Summary of authentication-related logs'),
+  applicationAndSystem: z.array(z.string()).describe('Summary of application and system-level logs (startup, config, etc.)'),
+  authenticationAndAuthorization: z.array(z.string()).describe('Summary of authentication and authorization logs (logins, tokens).'),
   database: z.array(z.string()).describe('Summary of database-related logs'),
   payments: z.array(z.string()).describe('Summary of payment-related logs'),
   api: z.array(z.string()).describe('Summary of API-related logs'),
@@ -25,37 +26,10 @@ const CategorizedLogSummarySchema = z.object({
   userActions: z.array(z.string()).describe('Summary of user action-related logs'),
 });
 
-const ErrorLogExtractionSchema = z.object({
-  criticalDatabaseErrors: z.array(z.string()).describe('Details of critical database errors'),
-  paymentErrors: z.array(z.string()).describe('Details of payment errors'),
-  authenticationErrors: z.array(z.string()).describe('Details of authentication errors'),
-  fileUploadErrors: z.array(z.string()).describe('Details of file upload errors'),
-  externalApiErrors: z.array(z.string()).describe('Details of external API errors'),
-  webSocketAuthErrors: z.array(z.string()).describe('Details of WebSocket authentication errors'),
-});
-
-const SecurityAlertsSchema = z.object({
-  sqlInjectionAttempts: z.array(z.string()).describe('Details of SQL injection attempts'),
-  highRateApiAbuse: z.array(z.string()).describe('Details of high-rate API abuse detected'),
-});
-
-const KeyStatisticsSchema = z.object({
-  category: z.string(),
-  count: z.number(),
-});
-
-const FinalConclusionSchema = z.object({
-  summary: z.array(z.string()).describe('A summary of the system\'s status'),
-  recommendations: z.array(z.string()).describe('A list of recommended actions'),
-});
 
 const AnalysisResultSchema = z.object({
   overviewSummary: OverviewSummarySchema,
   categorizedLogSummary: CategorizedLogSummarySchema,
-  errorLogExtraction: ErrorLogExtractionSchema,
-  securityAlerts: SecurityAlertsSchema,
-  keyStatistics: z.array(KeyStatisticsSchema),
-  finalConclusion: FinalConclusionSchema,
 });
 
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
@@ -79,11 +53,7 @@ export const explainLogRootCausePrompt = ai.definePrompt({
 
     Based on the logs, provide a comprehensive analysis in JSON format. Follow the schema exactly.
     - Summarize counts for all specified categories in 'overviewSummary'.
-    - Categorize individual log events in 'categorizedLogSummary'.
-    - Extract and detail all critical errors in 'errorLogExtraction'.
-    - Detail all security alerts in 'securityAlerts'.
-    - Compile key statistics in 'keyStatistics'.
-    - Provide a final conclusion and actionable recommendations in 'finalConclusion'.
+    - Categorize individual log events in 'categorizedLogSummary'. Only provide a few (2-3) of the most important log summaries for each category.
   `,
   model: 'googleai/gemini-1.5-pro-latest',
 });

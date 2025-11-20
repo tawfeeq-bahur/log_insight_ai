@@ -10,59 +10,32 @@ export interface MaskingResult {
 }
 
 const OverviewSummarySchema = z.object({
-  totalEntries: z.number(),
-  infoLogs: z.number(),
-  errorLogs: z.number(),
-  securityAlerts: z.number(),
-  dbFailures: z.number(),
-  paymentFailures: z.number(),
-  authFailures: z.number(),
-  fileUploadFailures: z.number(),
-  apiFailures: z.number(),
-  suspiciousRequests: z.number(),
+  totalEntries: z.number().describe('Total number of log entries processed'),
+  infoLogs: z.number().describe('Number of informational logs'),
+  errorLogs: z.number().describe('Number of error logs'),
+  securityAlerts: z.number().describe('Number of security or critical alerts'),
+  dbFailures: z.number().describe('Number of database failures'),
+  paymentFailures: z.number().describe('Number of payment failures'),
+  authFailures: z.number().describe('Number of authentication failures'),
+  fileUploadFailures: z.number().describe('Number of file/upload failures'),
+  apiFailures: z.number().describe('Number of API failures'),
+  suspiciousRequests: z.number().describe('Number of suspicious request attempts'),
 });
 
 const CategorizedLogSummarySchema = z.object({
-  authentication: z.array(z.string()),
-  database: z.array(z.string()),
-  payments: z.array(z.string()),
-  api: z.array(z.string()),
-  fileUpload: z.array(z.string()),
-  security: z.array(z.string()),
-  userActions: z.array(z.string()),
-});
-
-const ErrorLogExtractionSchema = z.object({
-  criticalDatabaseErrors: z.array(z.string()),
-  paymentErrors: z.array(z.string()),
-  authenticationErrors: z.array(z.string()),
-  fileUploadErrors: z.array(z.string()),
-  externalApiErrors: z.array(z.string()),
-  webSocketAuthErrors: z.array(z.string()),
-});
-
-const SecurityAlertsSchema = z.object({
-  sqlInjectionAttempts: z.array(z.string()),
-  highRateApiAbuse: z.array(z.string()),
-});
-
-const KeyStatisticsSchema = z.object({
-  category: z.string(),
-  count: z.number(),
-});
-
-const FinalConclusionSchema = z.object({
-  summary: z.array(z.string()),
-  recommendations: z.array(z.string()),
+  applicationAndSystem: z.array(z.string()).describe('Summary of application and system-level logs (startup, config, etc.)'),
+  authenticationAndAuthorization: z.array(z.string()).describe('Summary of authentication and authorization logs (logins, tokens).'),
+  database: z.array(z.string()).describe('Summary of database-related logs'),
+  payments: z.array(z.string()).describe('Summary of payment-related logs'),
+  api: z.array(z.string()).describe('Summary of API-related logs'),
+  fileUpload: z.array(z.string()).describe('Summary of file upload-related logs'),
+  security: z.array(z.string()).describe('Summary of security-related logs'),
+  userActions: z.array(z-string()).describe('Summary of user action-related logs'),
 });
 
 export const AnalysisResultSchema = z.object({
   overviewSummary: OverviewSummarySchema,
   categorizedLogSummary: CategorizedLogSummarySchema,
-  errorLogExtraction: ErrorLogExtractionSchema,
-  securityAlerts: SecurityAlertsSchema,
-  keyStatistics: z.array(KeyStatisticsSchema),
-  finalConclusion: FinalConclusionSchema,
 });
 
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
