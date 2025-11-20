@@ -78,6 +78,7 @@ const prompt = ai.definePrompt({
   input: {schema: ExplainLogRootCauseInputSchema},
   output: {schema: ExplainLogRootCauseOutputSchema},
   config: {
+    output: { format: 'json' },
     safetySettings: [
         {
             category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
