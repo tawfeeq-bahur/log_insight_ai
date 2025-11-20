@@ -39,7 +39,7 @@ export async function performAction(
 
     if (input.desiredAction === 'Send Email Notification') {
       return {
-        actionResult: `Email notification sent to security-alerts@your-company.com.`,
+        actionResult: `Email notification sent to hr@grootan.com.`,
         followUpTasks: "Monitor for responses and follow internal escalation procedures if necessary.",
       };
     }
