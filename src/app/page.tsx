@@ -200,6 +200,7 @@ export default function Home() {
         saveHistory(updatedHistory);
       }
     } catch (error) {
+      console.error(error);
       toast({
         variant: 'destructive',
         title: 'Analysis Failed',
@@ -269,11 +270,22 @@ export default function Home() {
       case 'low':
         return <Badge variant="secondary">Low</Badge>;
       default:
-        return <Badge variant="outline">{severity}</Badge>;
+        return <Badge variant="outline">{severity || 'N/A'}</Badge>;
     }
   };
   
-  const renderAnalysisResult = (result: LogAnalysisResult) => (
+  const renderAnalysisResult = (result: LogAnalysisResult) => {
+    if (!result || !result.overviewSummary) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground p-12">
+          <AlertCircle className="h-10 w-10 mb-4 text-destructive" />
+          <p className="font-medium">Analysis Incomplete</p>
+          <p className="text-sm">The AI response was not in the expected format.</p>
+        </div>
+      );
+    }
+
+    return (
      <div className="space-y-6">
         {cacheCheckResult && (
           <Card className="bg-secondary/50">
@@ -289,7 +301,7 @@ export default function Home() {
 
         <Card>
             <CardHeader>
-                <CardTitle className='text-lg'>Overview Summary</CardTitle>
+                <CardTitle className='text-lg'>1️⃣ Overview Summary</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -299,91 +311,113 @@ export default function Home() {
                     <p><strong>Security Alerts:</strong> {result.overviewSummary.securityAlerts}</p>
                     <p><strong>DB Failures:</strong> {result.overviewSummary.databaseFailures}</p>
                     <p><strong>Auth Failures:</strong> {result.overviewSummary.authenticationFailures}</p>
+                    <p><strong>Payment Failures:</strong> {result.overviewSummary.paymentFailures}</p>
+                    <p><strong>File/Upload Failures:</strong> {result.overviewSummary.fileUploadFailures}</p>
+                    <p><strong>API Failures:</strong> {result.overviewSummary.apiFailures}</p>
+                    <p><strong>Suspicious Requests:</strong> {result.overviewSummary.suspiciousRequests}</p>
                 </div>
             </CardContent>
         </Card>
         
-        {result.categorizedLogSummary?.map((cat, index) => (
-            <Card key={index}>
-                <CardHeader>
-                    <CardTitle className='text-lg flex items-center gap-2'><Database className='h-5 w-5'/> {cat.category}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                        {cat.summary.map((item, i) => <li key={i}>{item}</li>)}
-                    </ul>
-                </CardContent>
-            </Card>
-        ))}
-
-        {result.errorLogExtraction?.map((cat, index) => (
-            <Card key={index} className="border-destructive">
-                <CardHeader>
-                    <CardTitle className='text-lg flex items-center gap-2 text-destructive'><AlertCircle className='h-5 w-5'/> {cat.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                         {cat.details.map((item, i) => <li key={i}>{item}</li>)}
-                    </ul>
-                </CardContent>
-            </Card>
-        ))}
-
-        {result.securityAlerts?.map((cat, index) => (
-            <Card key={index} className="border-amber-500">
-                <CardHeader>
-                    <CardTitle className='text-lg flex items-center gap-2 text-amber-600'><ShieldCheck className='h-5 w-5'/> {cat.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                        {cat.details.map((item, i) => <li key={i}>{item}</li>)}
-                    </ul>
-                </CardContent>
-            </Card>
-        ))}
-
-        <Card>
+        {result.categorizedLogSummary?.length > 0 && (
+          <Card>
             <CardHeader>
-                <CardTitle className='text-lg flex items-center gap-2'><BarChart2 className='h-5 w-5'/> Key Statistics</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Category</TableHead>
-                            <TableHead className='text-right'>Count</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {result.keyStatistics.map((stat, index) => (
-                            <TableRow key={index}>
-                                <TableCell>{stat.category}</TableCell>
-                                <TableCell className='text-right'>{stat.count}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
-                <CardTitle className='text-lg flex items-center gap-2'><Lightbulb className='h-5 w-5'/> Final Conclusion</CardTitle>
+                <CardTitle className='text-lg flex items-center gap-2'>2️⃣ Categorized Log Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div>
-                    <h4 className="font-semibold">Summary</h4>
-                    <p className="text-sm">{result.finalConclusion.summary}</p>
-                </div>
-                <div>
-                    <h4 className="font-semibold">Recommendations</h4>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                        {result.finalConclusion.recommendations.map((item, i) => <li key={i}>{item}</li>)}
+              {result.categorizedLogSummary.map((cat, index) => (
+                <div key={index}>
+                    <h4 className='font-semibold flex items-center gap-2'><Database className='h-5 w-5'/> {cat.category}</h4>
+                    <ul className="list-disc pl-5 space-y-1 text-sm mt-2">
+                        {cat.summary.map((item, i) => <li key={i}>{item}</li>)}
                     </ul>
                 </div>
+              ))}
             </CardContent>
-        </Card>
+          </Card>
+        )}
 
+        {result.errorLogExtraction?.length > 0 && (
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className='text-lg flex items-center gap-2 text-destructive'>3️⃣ Error Log Extraction</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {result.errorLogExtraction.map((cat, index) => (
+                <div key={index}>
+                  <h4 className='font-semibold flex items-center gap-2'><AlertCircle className='h-5 w-5'/> {cat.title}</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm mt-2">
+                      {cat.details.map((item, i) => <li key={i}>{item}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {result.securityAlerts?.length > 0 && (
+            <Card className="border-amber-500">
+                <CardHeader>
+                    <CardTitle className='text-lg flex items-center gap-2 text-amber-600'>4️⃣ Security Alerts</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {result.securityAlerts.map((cat, index) => (
+                    <div key={index}>
+                      <h4 className='font-semibold flex items-center gap-2'><ShieldCheck className='h-5 w-5'/> {cat.title}</h4>
+                      <ul className="list-disc pl-5 space-y-1 text-sm mt-2">
+                          {cat.details.map((item, i) => <li key={i}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </CardContent>
+            </Card>
+        )}
+
+        {result.keyStatistics?.length > 0 && (
+          <Card>
+              <CardHeader>
+                  <CardTitle className='text-lg flex items-center gap-2'>5️⃣ Key Statistics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <Table>
+                      <TableHeader>
+                          <TableRow>
+                              <TableHead>Category</TableHead>
+                              <TableHead className='text-right'>Count</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {result.keyStatistics.map((stat, index) => (
+                              <TableRow key={index}>
+                                  <TableCell>{stat.category}</TableCell>
+                                  <TableCell className='text-right'>{stat.count}</TableCell>
+                              </TableRow>
+                          ))}
+                      </TableBody>
+                  </Table>
+              </CardContent>
+          </Card>
+        )}
+
+        {result.finalConclusion && (
+          <Card>
+              <CardHeader>
+                  <CardTitle className='text-lg flex items-center gap-2'>6️⃣ Final Conclusion</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div>
+                      <h4 className="font-semibold">Summary</h4>
+                      <p className="text-sm">{result.finalConclusion.summary}</p>
+                  </div>
+                  <div>
+                      <h4 className="font-semibold">Recommendations</h4>
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                          {result.finalConclusion.recommendations.map((item, i) => <li key={i}>{item}</li>)}
+                      </ul>
+                  </div>
+              </CardContent>
+          </Card>
+        )}
 
         <Card>
             <CardHeader>
@@ -416,7 +450,8 @@ export default function Home() {
             </CardContent>
         </Card>
     </div>
-  )
+    )
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
