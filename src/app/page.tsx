@@ -16,6 +16,7 @@ import {
   Github,
   Download,
   EyeOff,
+  Trash2,
 } from 'lucide-react';
 
 import {Button} from '@/components/ui/button';
@@ -90,6 +91,7 @@ export default function Home() {
   const [history, setHistory] = useState<LogHistoryEntry[]>([]);
   const [view, setView] = useState<'upload' | 'history'>('upload');
   const [selectedHistory, setSelectedHistory] = useState<LogHistoryEntry | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<LogHistoryEntry | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [actionResult, setActionResult] = useState<{actionResult: string; followUpTasks: string} | null>(null);
   const [cacheCheckResult, setCacheCheckResult] = useState<string | null>(null);
@@ -191,13 +193,11 @@ export default function Home() {
     setRedactedContent(redacted);
   
     try {
-      // Perform analysis and masking in parallel
       const [analysisPromise, maskingPromise] = [
         performAnalysis({ logContent: redacted }),
         performMasking({ logContent: fileContent }),
       ];
   
-      // Handle analysis result
       try {
         const result = await analysisPromise;
         setAnalysisResult(result);
@@ -225,7 +225,6 @@ export default function Home() {
         setIsLoading(false);
       }
   
-      // Handle masking result
       try {
         const maskResult = await maskingPromise;
         setMaskingResult(maskResult);
@@ -240,12 +239,10 @@ export default function Home() {
         setIsMasking(false);
       }
   
-      // Handle cache check (can be done before or after)
       const cacheResult = await checkCache({ logData: redacted, analysisResults: '' });
       setCacheCheckResult(cacheResult.analysisResults || 'No similar logs found in cache.');
   
     } catch (error) {
-      // This will catch errors if Promise.all fails, though individual catches are better
       setIsLoading(false);
       setIsMasking(false);
     }
@@ -299,6 +296,16 @@ export default function Home() {
   const viewHistoryEntry = (entry: LogHistoryEntry) => {
     setSelectedHistory(entry);
   }
+
+  const handleDeleteHistoryEntry = (id: string) => {
+    const updatedHistory = history.filter(entry => entry.id !== id);
+    saveHistory(updatedHistory);
+    toast({
+      title: 'Entry Deleted',
+      description: 'The analysis has been removed from your history.',
+    });
+    setEntryToDelete(null);
+  };
 
   const downloadMaskedLog = () => {
     if (!maskingResult || !file) return;
@@ -727,6 +734,9 @@ export default function Home() {
                             View
                             <ChevronRight className='h-4 w-4 ml-2'/>
                           </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setEntryToDelete(entry)}>
+                            <Trash2 className='h-4 w-4 text-destructive'/>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -779,6 +789,27 @@ export default function Home() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <Button variant="outline" onClick={useExistingAnalysis}>View Existing</Button>
             <AlertDialogAction onClick={analyzeNew}>Analyze Again</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!entryToDelete} onOpenChange={() => setEntryToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              analysis for "{entryToDelete?.filename}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => entryToDelete && handleDeleteHistoryEntry(entryToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
