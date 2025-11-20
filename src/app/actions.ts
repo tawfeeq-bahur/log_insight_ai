@@ -33,8 +33,18 @@ export async function performAction(
   input: AutomateResolutionsWithAIInput
 ): Promise<AutomateResolutionsWithAIOutput> {
   try {
-    const output = await automateResolutionsWithAI(input);
-    // This is a mocked response as the underlying tool is not implemented
+    // The underlying AI flow is called, but we are using a mocked response
+    // to simulate the action since no real tools (Jira, email APIs) are connected.
+    await automateResolutionsWithAI(input);
+
+    if (input.desiredAction === 'Send Email Notification') {
+      return {
+        actionResult: `Email notification sent to security-alerts@your-company.com.`,
+        followUpTasks: "Monitor for responses and follow internal escalation procedures if necessary.",
+      };
+    }
+
+    // Default mocked response for other actions like "Create Jira Ticket"
     return {
       actionResult: `Successfully created ticket for: ${input.desiredAction}. Ticket ID: TIX-${Math.floor(Math.random() * 1000)}.`,
       followUpTasks: "Monitor ticket for updates. Notify team in #engineering channel.",
@@ -44,6 +54,7 @@ export async function performAction(
     throw new Error('Failed to perform AI action.');
   }
 }
+
 
 export async function checkCache(
   input: IntelligentlyCacheAIResultsInput
