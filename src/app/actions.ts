@@ -24,10 +24,13 @@ export async function performAnalysis(
 ): Promise<ExplainLogRootCauseOutput> {
   try {
     const output = await explainLogRootCause(input);
+    if (!output) {
+      throw new Error('AI analysis returned an empty response.');
+    }
     return output;
-  } catch (error) {
-    console.error('Error in performAnalysis:', error);
-    throw new Error('Failed to perform AI analysis.');
+  } catch (error: any) {
+    console.error('Detailed error in performAnalysis:', error.message);
+    throw new Error(`Failed to perform AI analysis. Reason: ${error.message}`);
   }
 }
 
