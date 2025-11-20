@@ -85,7 +85,7 @@ export const explainLogRootCausePrompt = ai.definePrompt({
     - Compile key statistics in 'keyStatistics'.
     - Provide a final conclusion and actionable recommendations in 'finalConclusion'.
   `,
-  model: 'googleai/gemini-pro',
+  model: 'googleai/gemini-1.5-pro-latest',
 });
 
 export const explainLogRootCause = ai.defineFlow(
