@@ -77,6 +77,7 @@ const prompt = ai.definePrompt({
   name: 'explainLogRootCausePrompt',
   input: {schema: ExplainLogRootCauseInputSchema},
   output: {schema: ExplainLogRootCauseOutputSchema},
+  model: 'googleai/gemini-1.5-flash',
   config: {
     output: { format: 'json' },
     safetySettings: [
