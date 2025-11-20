@@ -10,6 +10,10 @@ import {
   X,
   Sparkles,
   ChevronRight,
+  Database,
+  ShieldCheck,
+  BarChart2,
+  Lightbulb,
 } from 'lucide-react';
 
 import {Button} from '@/components/ui/button';
@@ -258,7 +262,8 @@ export default function Home() {
   const renderSeverityBadge = (severity: string) => {
     switch (severity?.toLowerCase()) {
       case 'high':
-        return <Badge variant="destructive">High</Badge>;
+      case 'critical':
+        return <Badge variant="destructive">{severity}</Badge>;
       case 'medium':
         return <Badge className="bg-accent text-accent-foreground">Medium</Badge>;
       case 'low':
@@ -267,6 +272,151 @@ export default function Home() {
         return <Badge variant="outline">{severity}</Badge>;
     }
   };
+  
+  const renderAnalysisResult = (result: LogAnalysisResult) => (
+     <div className="space-y-6">
+        {cacheCheckResult && (
+          <Card className="bg-secondary/50">
+            <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold">Smart Cache Check</h3>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{cacheCheckResult}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+            <CardHeader>
+                <CardTitle className='text-lg'>Overview Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <p><strong>Total Entries:</strong> {result.overviewSummary.totalEntries}</p>
+                    <p><strong>Info Logs:</strong> {result.overviewSummary.infoLogs}</p>
+                    <p><strong>Error Logs:</strong> {result.overviewSummary.errorLogs}</p>
+                    <p><strong>Security Alerts:</strong> {result.overviewSummary.securityAlerts}</p>
+                    <p><strong>DB Failures:</strong> {result.overviewSummary.databaseFailures}</p>
+                    <p><strong>Auth Failures:</strong> {result.overviewSummary.authenticationFailures}</p>
+                </div>
+            </CardContent>
+        </Card>
+        
+        {result.categorizedLogSummary?.map((cat, index) => (
+            <Card key={index}>
+                <CardHeader>
+                    <CardTitle className='text-lg flex items-center gap-2'><Database className='h-5 w-5'/> {cat.category}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                        {cat.summary.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                </CardContent>
+            </Card>
+        ))}
+
+        {result.errorLogExtraction?.map((cat, index) => (
+            <Card key={index} className="border-destructive">
+                <CardHeader>
+                    <CardTitle className='text-lg flex items-center gap-2 text-destructive'><AlertCircle className='h-5 w-5'/> {cat.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                         {cat.details.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                </CardContent>
+            </Card>
+        ))}
+
+        {result.securityAlerts?.map((cat, index) => (
+            <Card key={index} className="border-amber-500">
+                <CardHeader>
+                    <CardTitle className='text-lg flex items-center gap-2 text-amber-600'><ShieldCheck className='h-5 w-5'/> {cat.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                        {cat.details.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                </CardContent>
+            </Card>
+        ))}
+
+        <Card>
+            <CardHeader>
+                <CardTitle className='text-lg flex items-center gap-2'><BarChart2 className='h-5 w-5'/> Key Statistics</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Category</TableHead>
+                            <TableHead className='text-right'>Count</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {result.keyStatistics.map((stat, index) => (
+                            <TableRow key={index}>
+                                <TableCell>{stat.category}</TableCell>
+                                <TableCell className='text-right'>{stat.count}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle className='text-lg flex items-center gap-2'><Lightbulb className='h-5 w-5'/> Final Conclusion</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div>
+                    <h4 className="font-semibold">Summary</h4>
+                    <p className="text-sm">{result.finalConclusion.summary}</p>
+                </div>
+                <div>
+                    <h4 className="font-semibold">Recommendations</h4>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                        {result.finalConclusion.recommendations.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                </div>
+            </CardContent>
+        </Card>
+
+
+        <Card>
+            <CardHeader>
+                <CardTitle className='text-lg'>Actionable Resolutions</CardTitle>
+                <CardDescription>Automate resolution steps and create follow-up tasks.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className='flex items-center gap-4'>
+                <Select onValueChange={handleAction} disabled={isActionLoading}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select an action..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Create Jira Ticket">Create Jira Ticket</SelectItem>
+                        <SelectItem value="Send Email Notification">Send Email Notification</SelectItem>
+                        <SelectItem value="Page On-call Engineer">Page On-call Engineer</SelectItem>
+                    </SelectContent>
+                </Select>
+                    {isActionLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+                </div>
+                
+                {actionResult && (
+                    <div className="space-y-4 rounded-md border p-4">
+                            <h4 className="font-semibold">Action Result</h4>
+                            <p className="text-sm text-muted-foreground">{actionResult.actionResult}</p>
+                            <h4 className="font-semibold">Follow-up Tasks</h4>
+                            <p className="text-sm text-muted-foreground">{actionResult.followUpTasks}</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    </div>
+  )
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
@@ -389,69 +539,7 @@ export default function Home() {
                       <p className="text-muted-foreground">AI is thinking...</p>
                     </div>
                   )}
-                  {analysisResult && (
-                    <div className="space-y-6">
-                       {cacheCheckResult && (
-                        <Card className="bg-secondary/50">
-                          <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <h3 className="font-semibold">Smart Cache Check</h3>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-sm text-muted-foreground">{cacheCheckResult}</p>
-                          </CardContent>
-                        </Card>
-                       )}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-muted-foreground">Severity</p>
-                          {renderSeverityBadge(analysisResult.severityRating)}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-muted-foreground">Issue Type</p>
-                          <p className="font-semibold">{analysisResult.issueType}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Root Cause</p>
-                        <p className="text-sm">{analysisResult.rootCause}</p>
-                      </div>
-                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Suggested Fix</p>
-                        <p className="text-sm">{analysisResult.suggestedFix}</p>
-                      </div>
-                      <Card>
-                        <CardHeader>
-                            <CardTitle className='text-lg'>Actionable Resolutions</CardTitle>
-                            <CardDescription>Automate resolution steps and create follow-up tasks.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className='flex items-center gap-4'>
-                            <Select onValueChange={handleAction} disabled={isActionLoading}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select an action..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Create Jira Ticket">Create Jira Ticket</SelectItem>
-                                    <SelectItem value="Send Email Notification">Send Email Notification</SelectItem>
-                                    <SelectItem value="Page On-call Engineer">Page On-call Engineer</SelectItem>
-                                </SelectContent>
-                            </Select>
-                             {isActionLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-                            </div>
-                           
-                            {actionResult && (
-                                <div className="space-y-4 rounded-md border p-4">
-                                     <h4 className="font-semibold">Action Result</h4>
-                                     <p className="text-sm text-muted-foreground">{actionResult.actionResult}</p>
-                                      <h4 className="font-semibold">Follow-up Tasks</h4>
-                                     <p className="text-sm text-muted-foreground">{actionResult.followUpTasks}</p>
-                                </div>
-                            )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
+                  {analysisResult && renderAnalysisResult(analysisResult)}
                   {!isLoading && !analysisResult && (
                      <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground p-12">
                        <Sparkles className="h-10 w-10 mb-4" />
@@ -540,24 +628,7 @@ export default function Home() {
             <div className="grid md:grid-cols-2 gap-6 py-4 max-h-[70vh] overflow-y-auto">
               <div className='space-y-4'>
                 <h3 className='font-semibold'>Analysis Details</h3>
-                <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Severity</p>
-                    {selectedHistory && renderSeverityBadge(selectedHistory.analysis.severityRating)}
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Issue Type</p>
-                    <p className="font-semibold">{selectedHistory?.analysis.issueType}</p>
-                  </div>
-                </div>
-                <div className="space-y-1 rounded-lg border p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Root Cause</p>
-                  <p className="text-sm">{selectedHistory?.analysis.rootCause}</p>
-                </div>
-                <div className="space-y-1 rounded-lg border p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Suggested Fix</p>
-                  <p className="text-sm">{selectedHistory?.analysis.suggestedFix}</p>
-                </div>
+                {selectedHistory?.analysis && renderAnalysisResult(selectedHistory.analysis)}
               </div>
               <div className='space-y-4'>
                 <h3 className='font-semibold'>Original Log Content</h3>

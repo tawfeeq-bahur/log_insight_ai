@@ -1,9 +1,6 @@
-export interface LogAnalysisResult {
-  issueType: string;
-  rootCause: string;
-  suggestedFix: string;
-  severityRating: string;
-}
+import { type ExplainLogRootCauseOutput } from "@/ai/flows/explain-log-root-cause";
+
+export type LogAnalysisResult = ExplainLogRootCauseOutput;
 
 export interface LogHistoryEntry {
   id: string;
