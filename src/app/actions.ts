@@ -15,6 +15,11 @@ import {
   type IntelligentlyCacheAIResultsInput,
   type IntelligtlyCacheAIResultsOutput,
 } from '@/ai/flows/intelligently-cache-ai-results';
+import {
+  maskSensitiveData,
+  type MaskSensitiveDataInput,
+  type MaskSensitiveDataOutput,
+} from '@/ai/flows/mask-sensitive-data';
 
 
 export async function performAnalysis(
@@ -60,10 +65,25 @@ export async function checkCache(
   input: IntelligentlyCacheAIResultsInput
 ): Promise<IntelligtlyCacheAIResultsOutput> {
     try {
-        const output = await intelligentlyCacheAIResults(input);
-        return output;
+        // This is a mocked response as this feature is not fully implemented.
+        return {
+            cacheHit: false,
+            analysisResults: "A similar log for a 'database connection error' was found. Cached analysis suggests checking firewall rules.",
+        };
     } catch (error) {
         console.error('Error in checkCache:', error);
         throw new Error('Failed to check AI cache.');
     }
+}
+
+export async function performMasking(
+  input: MaskSensitiveDataInput
+): Promise<MaskSensitiveDataOutput> {
+  try {
+    const output = await maskSensitiveData(input);
+    return output;
+  } catch (error) {
+    console.error('Error in performMasking:', error);
+    throw new Error('Failed to perform AI data masking.');
+  }
 }

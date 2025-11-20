@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   BarChart2,
   Github,
+  Download,
+  EyeOff,
 } from 'lucide-react';
 
 import {Button} from '@/components/ui/button';
@@ -30,8 +32,9 @@ import {
   performAnalysis,
   performAction,
   checkCache,
+  performMasking,
 } from '@/app/actions';
-import type {LogAnalysisResult, LogHistoryEntry} from '@/lib/types';
+import type {LogAnalysisResult, LogHistoryEntry, MaskingResult} from '@/lib/types';
 import {Logo} from '@/components/icons';
 import {ScrollArea} from '@/components/ui/scroll-area';
 import {Switch} from '@/components/ui/switch';
@@ -79,7 +82,9 @@ export default function Home() {
   const [redactedContent, setRedactedContent] = useState<string>('');
   const [isRedacted, setIsRedacted] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isMasking, setIsMasking] = useState<boolean>(false);
   const [analysisResult, setAnalysisResult] = useState<LogAnalysisResult | null>(null);
+  const [maskingResult, setMaskingResult] = useState<MaskingResult | null>(null);
   const [hash, setHash] = useState<string | null>(null);
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [history, setHistory] = useState<LogHistoryEntry[]>([]);
@@ -160,54 +165,89 @@ export default function Home() {
     setRedactedContent('');
     setIsLoading(false);
     setAnalysisResult(null);
+    setMaskingResult(null);
     setHash(null);
     setActionResult(null);
     setCacheCheckResult(null);
   };
 
   const handleAnalysis = async (forceNew = false) => {
-    if (!hash || !redactedContent) return;
-
+    if (!hash || !fileContent) return;
+  
     const existingEntry = history.find(entry => entry.hash === hash);
     if (existingEntry && !forceNew) {
       setAnalysisResult(existingEntry.analysis);
       return;
     }
-
+  
     setIsLoading(true);
+    setIsMasking(true); // Start masking in parallel
     setAnalysisResult(null);
     setActionResult(null);
     setCacheCheckResult(null);
+    setMaskingResult(null);
 
+    const redacted = redactSensitiveData(fileContent);
+    setRedactedContent(redacted);
+  
     try {
-      const cacheResult = await checkCache({logData: redactedContent, analysisResults: ''});
-      setCacheCheckResult(cacheResult.analysisResults || 'No similar logs found in cache.');
-      
-      const result = await performAnalysis({logContent: redactedContent});
-      setAnalysisResult(result);
-      
-      if (file) {
-        const newEntry: LogHistoryEntry = {
-          id: new Date().toISOString(),
-          filename: file.name,
-          uploadTime: new Date().toLocaleString(),
-          fileSize: (file.size / 1024).toFixed(2) + ' KB',
-          hash,
-          analysis: result,
-          content: fileContent,
-        };
-        const updatedHistory = [newEntry, ...history.filter(h => h.hash !== hash)];
-        saveHistory(updatedHistory);
+      // Perform analysis and masking in parallel
+      const [analysisPromise, maskingPromise] = [
+        performAnalysis({ logContent: redacted }),
+        performMasking({ logContent: fileContent }),
+      ];
+  
+      // Handle analysis result
+      try {
+        const result = await analysisPromise;
+        setAnalysisResult(result);
+        if (file) {
+          const newEntry: LogHistoryEntry = {
+            id: new Date().toISOString(),
+            filename: file.name,
+            uploadTime: new Date().toLocaleString(),
+            fileSize: (file.size / 1024).toFixed(2) + ' KB',
+            hash,
+            analysis: result,
+            content: fileContent,
+          };
+          const updatedHistory = [newEntry, ...history.filter(h => h.hash !== hash)];
+          saveHistory(updatedHistory);
+        }
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: 'destructive',
+          title: 'Analysis Failed',
+          description: 'An error occurred during AI analysis. Please try again.',
+        });
+      } finally {
+        setIsLoading(false);
       }
+  
+      // Handle masking result
+      try {
+        const maskResult = await maskingPromise;
+        setMaskingResult(maskResult);
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: 'destructive',
+          title: 'Masking Failed',
+          description: 'An error occurred during AI data masking.',
+        });
+      } finally {
+        setIsMasking(false);
+      }
+  
+      // Handle cache check (can be done before or after)
+      const cacheResult = await checkCache({ logData: redacted, analysisResults: '' });
+      setCacheCheckResult(cacheResult.analysisResults || 'No similar logs found in cache.');
+  
     } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Analysis Failed',
-        description: 'An error occurred during AI analysis. Please try again.',
-      });
-    } finally {
+      // This will catch errors if Promise.all fails, though individual catches are better
       setIsLoading(false);
+      setIsMasking(false);
     }
   };
 
@@ -259,6 +299,20 @@ export default function Home() {
   const viewHistoryEntry = (entry: LogHistoryEntry) => {
     setSelectedHistory(entry);
   }
+
+  const downloadMaskedLog = () => {
+    if (!maskingResult || !file) return;
+
+    const blob = new Blob([maskingResult.maskedLog], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `masked-${file.name}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const renderSeverityBadge = (severity: string) => {
     switch (severity?.toLowerCase()) {
@@ -543,11 +597,11 @@ export default function Home() {
                     </ScrollArea>
                     {file && (
                       <div className="mt-4 flex justify-end">
-                        <Button onClick={() => handleAnalysis()} disabled={isLoading}>
-                          {isLoading ? (
+                        <Button onClick={() => handleAnalysis()} disabled={isLoading || isMasking}>
+                          {(isLoading || isMasking) ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Analyzing...
+                              {isLoading ? 'Analyzing...' : 'Masking...'}
                             </>
                           ) : (
                             'Analyze Log'
@@ -584,6 +638,61 @@ export default function Home() {
                   )}
                 </CardContent>
               </Card>
+
+              {(isMasking || maskingResult) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <EyeOff className="h-5 w-5" />
+                      Sensitive Data Masking
+                    </CardTitle>
+                    <CardDescription>
+                      AI has detected and masked the following sensitive information.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isMasking && !maskingResult && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Scanning for sensitive data...</span>
+                      </div>
+                    )}
+                    {maskingResult && (
+                      <>
+                        <ScrollArea className="h-48 w-full rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Original Value</TableHead>
+                                <TableHead>Masked Value</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {maskingResult.redactions.map((item, index) => (
+                                <TableRow key={index}>
+                                  <TableCell className="font-mono text-xs text-red-600 truncate max-w-xs">{item.original}</TableCell>
+                                  <TableCell className="font-mono text-xs text-green-600">{item.masked}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                          {maskingResult.redactions.length === 0 && (
+                            <div className="p-4 text-center text-sm text-muted-foreground">
+                              No sensitive data found to mask.
+                            </div>
+                          )}
+                        </ScrollArea>
+                        <div className="mt-4 flex justify-end">
+                          <Button onClick={downloadMaskedLog} variant="outline">
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Masked Log
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         ) : (
