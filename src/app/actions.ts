@@ -15,11 +15,8 @@ import {
   type IntelligentlyCacheAIResultsInput,
   type IntelligtlyCacheAIResultsOutput,
 } from '@/ai/flows/intelligently-cache-ai-results';
-import {
-  maskSensitiveData,
-  type MaskSensitiveDataInput,
-  type MaskSensitiveDataOutput,
-} from '@/ai/flows/mask-sensitive-data';
+import { redactSensitiveData } from '@/lib/log-parser';
+import type { MaskingResult } from '@/lib/types';
 
 
 export async function performAnalysis(
@@ -77,13 +74,46 @@ export async function checkCache(
 }
 
 export async function performMasking(
-  input: MaskSensitiveDataInput
-): Promise<MaskSensitiveDataOutput> {
+  input: { logContent: string }
+): Promise<MaskingResult> {
   try {
-    const output = await maskSensitiveData(input);
-    return output;
+    const originalContent = input.logContent;
+    const maskedLog = redactSensitiveData(originalContent);
+    
+    // To create the list of redactions, we need to find what was changed.
+    // This is a simplified way to do it. A more robust solution might
+    // involve getting the matches from the regex function itself.
+    const redactions: { original: string; masked: string }[] = [];
+    const originalLines = originalContent.split('\n');
+    const maskedLines = maskedLog.split('\n');
+
+    originalLines.forEach((originalLine, i) => {
+      const maskedLine = maskedLines[i];
+      if (originalLine !== maskedLine) {
+        const originalWords = originalLine.split(/(\s+|\[|\]|,|\(|\))/);
+        const maskedWords = maskedLine.split(/(\s+|\[|\]|,|\(|\))/);
+        originalWords.forEach((word, j) => {
+          if (word !== maskedWords[j] && !word.startsWith('[')) {
+             const maskedWord = maskedWords[j];
+             if(maskedWord && maskedWord.startsWith('[')) {
+                redactions.push({ original: word, masked: maskedWord });
+             }
+          }
+        });
+      }
+    });
+
+    // A simple heuristic to find changed values if line-by-line fails.
+    if(redactions.length === 0 && originalContent !== maskedLog){
+        const uniqueRedactions = [...new Set(maskedLog.match(/\[REDACTED_[A-Z_]+\]/g))];
+        uniqueRedactions.forEach(masked => {
+            redactions.push({original: "Value obscured by redaction", masked: masked})
+        })
+    }
+
+    return { maskedLog, redactions };
   } catch (error) {
     console.error('Error in performMasking:', error);
-    throw new Error('Failed to perform AI data masking.');
+    throw new Error('Failed to perform data masking.');
   }
 }
