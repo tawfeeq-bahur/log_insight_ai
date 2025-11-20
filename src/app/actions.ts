@@ -13,7 +13,7 @@ import {
 import {
   intelligentlyCacheAIResults,
   type IntelligentlyCacheAIResultsInput,
-  type IntelligentlyCacheAIResultsOutput
+  type IntelligtlyCacheAIResultsOutput,
 } from '@/ai/flows/intelligently-cache-ai-results';
 
 
@@ -47,14 +47,10 @@ export async function performAction(
 
 export async function checkCache(
   input: IntelligentlyCacheAIResultsInput
-): Promise<IntelligentlyCacheAIResultsOutput> {
+): Promise<IntelligtlyCacheAIResultsOutput> {
     try {
         const output = await intelligentlyCacheAIResults(input);
-        // This is a mocked response as the underlying tool is not fully implemented
-        return {
-            cacheHit: false,
-            analysisResults: "A similar log for a 'database connection error' was found. Cached analysis suggests checking firewall rules."
-        };
+        return output;
     } catch (error) {
         console.error('Error in checkCache:', error);
         throw new Error('Failed to check AI cache.');

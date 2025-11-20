@@ -1,4 +1,5 @@
 import { type ExplainLogRootCauseOutput } from "@/ai/flows/explain-log-root-cause";
+import { type IntelligtlyCacheAIResultsOutput } from "@/ai/flows/intelligently-cache-ai-results";
 
 export type LogAnalysisResult = ExplainLogRootCauseOutput;
 
@@ -11,3 +12,5 @@ export interface LogHistoryEntry {
   analysis: LogAnalysisResult;
   content: string;
 }
+
+export type CacheCheckResult = IntelligtlyCacheAIResultsOutput;
