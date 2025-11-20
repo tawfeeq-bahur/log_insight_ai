@@ -220,12 +220,12 @@ export default function Home() {
         const updatedHistory = [newEntry, ...history.filter(h => h.hash !== hash)];
         saveHistory(updatedHistory);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error('Detailed error in performAnalysis:', error.message);
       toast({
         variant: 'destructive',
         title: 'Analysis Failed',
-        description: 'An error occurred during AI analysis. Please try again.',
+        description: `An error occurred during AI analysis: ${error.message}`,
       });
     } finally {
       setIsLoading(false);
@@ -620,7 +620,11 @@ export default function Home() {
                     <p className="text-muted-foreground">AI is thinking...</p>
                 </div>
                 )}
-                {viewState === 'analyzed' && analysisResult && renderAnalysisResult(analysisResult)}
+                {viewState === 'analyzed' && analysisResult && (
+                    <ScrollArea className='h-[calc(100vh-20rem)]'>
+                        {renderAnalysisResult(analysisResult)}
+                    </ScrollArea>
+                )}
                 {viewState !== 'analyzing' && viewState !== 'analyzed' && (
                     <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground p-12">
                     <Sparkles className="h-10 w-10 mb-4" />
@@ -807,3 +811,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
