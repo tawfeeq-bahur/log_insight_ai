@@ -52,12 +52,13 @@ const prompt = ai.definePrompt({
   - Session IDs
   - Any metadata containing private info (like SSN, address, etc.)
 
-  Replace all detected sensitive **values** with a secure mask (e.g., "xxxxxx").
-  **Important**: Do NOT change the field names (keys), only mask the values. The log structure must be maintained exactly.
+  Replace all detected sensitive **values** with a secure mask (e.g., "[REDACTED_EMAIL]").
+  **Important**: Do NOT change the field names (keys), only mask the values. The log structure must be maintained exactly. For example, if you find 'email: "test@example.com"', you should replace it with 'email: "[REDACTED_EMAIL]"'.
 
   Your output must be a JSON object containing two fields:
   1.  'maskedLog': The complete log content with all sensitive data values replaced.
-  2.  'redactions': An array of objects, where each object details a change you made, with 'original' and 'masked' keys. For example: { "original": "Tawfeeq", "masked": "xxxxxx" }.
+  2.  'redactions': An array of objects, where each object details a change you made, with 'original' and 'masked' keys. For example: { "original": "test@example.com", "masked": "[REDACTED_EMAIL]" }.
+  If no sensitive data is found, return the original log content in 'maskedLog' and an empty 'redactions' array.
   `,
 });
 
