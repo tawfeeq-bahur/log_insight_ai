@@ -13,7 +13,7 @@ import {
   Database,
   ShieldCheck,
   BarChart2,
-  Lightbulb,
+  Github,
 } from 'lucide-react';
 
 import {Button} from '@/components/ui/button';
@@ -634,6 +634,28 @@ export default function Home() {
           </Card>
         )}
       </main>
+
+      <footer className="flex items-center justify-center gap-4 p-4 border-t bg-background">
+        <p className="text-sm text-muted-foreground">
+          A project for{' '}
+          <a
+            href="https://www.grootan.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary hover:underline"
+          >
+            GROOTAN TECHNOLOGIES
+          </a>
+        </p>
+        <a
+          href="https://github.com/grootan"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Grootan GitHub"
+        >
+          <Github className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+        </a>
+      </footer>
 
       <AlertDialog open={isDuplicate} onOpenChange={setIsDuplicate}>
         <AlertDialogContent>
