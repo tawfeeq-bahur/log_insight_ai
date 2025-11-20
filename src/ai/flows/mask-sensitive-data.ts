@@ -17,7 +17,7 @@ export type MaskSensitiveDataInput = z.infer<typeof MaskSensitiveDataInputSchema
 
 const RedactionItemSchema = z.object({
   original: z.string().describe('The original sensitive value that was detected.'),
-  masked: z.string().describe('The masked version of the value (e.g., "xxxxxx").'),
+  masked: z.string().describe('The masked version of the value (e.g., "[REDACTED_EMAIL]").'),
 });
 
 const MaskSensitiveDataOutputSchema = z.object({

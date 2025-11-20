@@ -683,7 +683,7 @@ export default function Home() {
                           )}
                         </ScrollArea>
                         <div className="mt-4 flex justify-end">
-                          <Button onClick={downloadMaskedLog} variant="outline">
+                          <Button onClick={downloadMaskedLog} variant="outline" disabled={!maskingResult}>
                             <Download className="mr-2 h-4 w-4" />
                             Download Masked Log
                           </Button>
