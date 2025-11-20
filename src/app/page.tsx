@@ -648,7 +648,7 @@ export default function Home() {
           </a>
         </p>
         <a
-          href="https://github.com/grootan"
+          href="https://github.com/tawfeeq-bahur/log_insight_ai.git"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Grootan GitHub"
