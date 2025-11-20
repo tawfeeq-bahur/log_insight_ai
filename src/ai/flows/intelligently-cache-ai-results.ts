@@ -57,14 +57,8 @@ const intelligentlyCacheAIResultsFlow = ai.defineFlow(
     outputSchema: IntelligentlyCacheAIResultsOutputSchema,
   },
   async input => {
-    // First, check if the cache is helpful using the isCacheHelpful tool
-    const {output: promptOutput} = await intelligentlyCacheAIResultsPrompt(input);
-
-    // Dummy implementation.  Need to implement cache interaction and implement the isCacheHelpfulTool.
-    return {
-      cacheHit: false,
-      analysisResults: input.analysisResults, // Dummy: Just return the input for now
-    };
+    const {output} = await intelligentlyCacheAIResultsPrompt(input);
+    return output!;
   }
 );
 
