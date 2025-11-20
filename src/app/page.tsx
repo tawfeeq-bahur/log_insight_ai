@@ -17,6 +17,7 @@ import {
   Download,
   EyeOff,
   Trash2,
+  FileDown,
 } from 'lucide-react';
 
 import {Button} from '@/components/ui/button';
@@ -28,7 +29,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {useToast} from '@/hooks/use-toast';
-import {getSha256, redactSensitiveData} from '@/lib/log-parser';
+import {getSha256} from '@/lib/log-parser';
 import {
   performAnalysis,
   performAction,
@@ -77,11 +78,12 @@ import {
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = ['.log', '.txt', '.json'];
 
+type ViewState = 'upload' | 'masked' | 'analyzing' | 'analyzed';
+
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
-  const [redactedContent, setRedactedContent] = useState<string>('');
-  const [isRedacted, setIsRedacted] = useState<boolean>(true);
+  const [viewState, setViewState] = useState<ViewState>('upload');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isMasking, setIsMasking] = useState<boolean>(false);
   const [analysisResult, setAnalysisResult] = useState<LogAnalysisResult | null>(null);
@@ -89,7 +91,7 @@ export default function Home() {
   const [hash, setHash] = useState<string | null>(null);
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [history, setHistory] = useState<LogHistoryEntry[]>([]);
-  const [view, setView] = useState<'upload' | 'history'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'history'>('upload');
   const [selectedHistory, setSelectedHistory] = useState<LogHistoryEntry | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<LogHistoryEntry | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -133,19 +135,32 @@ export default function Home() {
     
     resetState();
     setFile(selectedFile);
+    setIsMasking(true);
 
     const content = await selectedFile.text();
     setFileContent(content);
 
-    const fileHash = await getSha256(content);
-    setHash(fileHash);
+    try {
+      const maskResult = await performMasking({ logContent: content });
+      setMaskingResult(maskResult);
+      const fileHash = await getSha256(content);
+      setHash(fileHash);
+      setViewState('masked');
 
-    const existingEntry = history.find(entry => entry.hash === fileHash);
-    if (existingEntry) {
-      setIsDuplicate(true);
-    } else {
-      const redacted = redactSensitiveData(content);
-      setRedactedContent(redacted);
+      const existingEntry = history.find(entry => entry.hash === fileHash);
+      if (existingEntry) {
+        setIsDuplicate(true);
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Masking Failed',
+        description: 'Could not process the file for data masking.',
+      });
+      resetState();
+    } finally {
+      setIsMasking(false);
     }
   }, [history, toast]);
 
@@ -164,7 +179,7 @@ export default function Home() {
   const resetState = () => {
     setFile(null);
     setFileContent('');
-    setRedactedContent('');
+    setViewState('upload');
     setIsLoading(false);
     setAnalysisResult(null);
     setMaskingResult(null);
@@ -174,77 +189,47 @@ export default function Home() {
   };
 
   const handleAnalysis = async (forceNew = false) => {
-    if (!hash || !fileContent) return;
+    if (!hash || !maskingResult) return;
   
     const existingEntry = history.find(entry => entry.hash === hash);
     if (existingEntry && !forceNew) {
       setAnalysisResult(existingEntry.analysis);
+      setViewState('analyzed');
       return;
     }
   
     setIsLoading(true);
-    setIsMasking(true); // Start masking in parallel
+    setViewState('analyzing');
     setAnalysisResult(null);
     setActionResult(null);
     setCacheCheckResult(null);
-    setMaskingResult(null);
-
-    const redacted = redactSensitiveData(fileContent);
-    setRedactedContent(redacted);
   
     try {
-      const [analysisPromise, maskingPromise] = [
-        performAnalysis({ logContent: redacted }),
-        performMasking({ logContent: fileContent }),
-      ];
-  
-      try {
-        const result = await analysisPromise;
-        setAnalysisResult(result);
-        if (file) {
-          const newEntry: LogHistoryEntry = {
-            id: new Date().toISOString(),
-            filename: file.name,
-            uploadTime: new Date().toLocaleString(),
-            fileSize: (file.size / 1024).toFixed(2) + ' KB',
-            hash,
-            analysis: result,
-            content: fileContent,
-          };
-          const updatedHistory = [newEntry, ...history.filter(h => h.hash !== hash)];
-          saveHistory(updatedHistory);
-        }
-      } catch (error) {
-        console.error(error);
-        toast({
-          variant: 'destructive',
-          title: 'Analysis Failed',
-          description: 'An error occurred during AI analysis. Please try again.',
-        });
-      } finally {
-        setIsLoading(false);
+      const result = await performAnalysis({ logContent: maskingResult.maskedLog });
+      setAnalysisResult(result);
+      if (file && fileContent) {
+        const newEntry: LogHistoryEntry = {
+          id: new Date().toISOString(),
+          filename: file.name,
+          uploadTime: new Date().toLocaleString(),
+          fileSize: (file.size / 1024).toFixed(2) + ' KB',
+          hash,
+          analysis: result,
+          content: fileContent, // Save original content
+        };
+        const updatedHistory = [newEntry, ...history.filter(h => h.hash !== hash)];
+        saveHistory(updatedHistory);
       }
-  
-      try {
-        const maskResult = await maskingPromise;
-        setMaskingResult(maskResult);
-      } catch (error) {
-        console.error(error);
-        toast({
-          variant: 'destructive',
-          title: 'Masking Failed',
-          description: 'An error occurred during AI data masking.',
-        });
-      } finally {
-        setIsMasking(false);
-      }
-  
-      const cacheResult = await checkCache({ logData: redacted, analysisResults: '' });
-      setCacheCheckResult(cacheResult.analysisResults || 'No similar logs found in cache.');
-  
     } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Analysis Failed',
+        description: 'An error occurred during AI analysis. Please try again.',
+      });
+    } finally {
       setIsLoading(false);
-      setIsMasking(false);
+      setViewState('analyzed');
     }
   };
 
@@ -277,18 +262,12 @@ export default function Home() {
     const existingEntry = history.find(entry => entry.hash === hash);
     if (existingEntry) {
       setAnalysisResult(existingEntry.analysis);
-      setFileContent(existingEntry.content);
-      const redacted = redactSensitiveData(existingEntry.content);
-      setRedactedContent(redacted);
+      setViewState('analyzed');
     }
     setIsDuplicate(false);
   };
-
+  
   const analyzeNew = () => {
-    if(fileContent) {
-        const redacted = redactSensitiveData(fileContent);
-        setRedactedContent(redacted);
-    }
     setIsDuplicate(false);
     handleAnalysis(true);
   };
@@ -513,27 +492,172 @@ export default function Home() {
     </div>
     )
   };
+  
+  const renderUpload = () => (
+    <Card
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+    >
+      <CardHeader>
+        <CardTitle>Upload Log File</CardTitle>
+        <CardDescription>
+          Drag & drop a file or click to upload (.log, .txt, .json, max 5MB)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center justify-center text-center p-6 pt-0">
+        <div className="w-full rounded-lg border-2 border-dashed border-border p-12">
+          {isMasking ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground">Masking sensitive data...</p>
+            </div>
+          ) : (
+            <>
+                <Inbox className="mx-auto h-12 w-12 text-muted-foreground" />
+                <p className="mt-4 text-sm text-muted-foreground">
+                Drag your file here or
+                </p>
+                <input
+                type="file"
+                id="file-upload"
+                className="sr-only"
+                onChange={e => handleFileChange(e.target.files ? e.target.files[0] : null)}
+                accept=".log,.txt,.json"
+                />
+                <Button asChild variant="link" className="p-0 h-auto">
+                <label htmlFor="file-upload">browse files</label>
+                </Button>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderDashboard = () => (
+    <div className="grid gap-6 lg:grid-cols-2">
+        {/* Left Column */}
+        <div className="flex flex-col gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>{file?.name}</CardTitle>
+                    <CardDescription>File has been masked. What would you like to do next?</CardDescription>
+                </CardHeader>
+                <CardContent className='flex gap-4'>
+                    <Button onClick={() => handleAnalysis()} disabled={viewState === 'analyzing'}>
+                        {viewState === 'analyzing' ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Analyzing...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className='mr-2 h-4 w-4' />
+                                Analyze
+                            </>
+                        )}
+                    </Button>
+                    <Button onClick={downloadMaskedLog} variant="secondary">
+                        <FileDown className='mr-2 h-4 w-4'/>
+                        Download Masked File
+                    </Button>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <EyeOff className="h-5 w-5" />
+                    Masked Areas
+                </CardTitle>
+                <CardDescription>
+                    Sensitive information that has been redacted from the log.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <ScrollArea className="h-96 w-full rounded-md border">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Line</TableHead>
+                        <TableHead>Original Value</TableHead>
+                        <TableHead>Masked Value</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {maskingResult && maskingResult.redactions.map((item, index) => (
+                        <TableRow key={index}>
+                            <TableCell>{item.lineNumber}</TableCell>
+                            <TableCell className="font-mono text-xs text-red-600 truncate max-w-[200px]">{item.original}</TableCell>
+                            <TableCell className="font-mono text-xs text-green-600">{item.masked}</TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                    {maskingResult && maskingResult.redactions.length === 0 && (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                        No sensitive data found to mask.
+                    </div>
+                    )}
+                </ScrollArea>
+                </CardContent>
+            </Card>
+        </div>
+
+        {/* Right Column */}
+        <div className="flex flex-col gap-6">
+            <Card className="flex-1">
+            <CardHeader>
+                <CardTitle>Analysis Results</CardTitle>
+                <CardDescription>
+                AI-powered insights into your log data.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {viewState === 'analyzing' && (
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground">AI is thinking...</p>
+                </div>
+                )}
+                {viewState === 'analyzed' && analysisResult && renderAnalysisResult(analysisResult)}
+                {viewState !== 'analyzing' && viewState !== 'analyzed' && (
+                    <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground p-12">
+                    <Sparkles className="h-10 w-10 mb-4" />
+                    <p className="font-medium">Your insights will appear here</p>
+                    <p className="text-sm">Click "Analyze" to get started.</p>
+                    </div>
+                )}
+            </CardContent>
+            </Card>
+        </div>
+    </div>
+  );
+
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+          resetState();
+          setActiveTab('upload');
+        }}>
           <Logo className="h-8 w-8 text-primary" />
           <h1 className="text-xl font-bold text-foreground">LogInsightsAI</h1>
         </div>
         <nav className="ml-auto flex items-center gap-4">
           <Button
-            variant={view === 'upload' ? 'secondary' : 'ghost'}
+            variant={activeTab === 'upload' ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => setView('upload')}
+            onClick={() => setActiveTab('upload')}
           >
             <Sparkles className="mr-2 h-4 w-4" />
             Analyze
           </Button>
           <Button
-            variant={view === 'history' ? 'secondary' : 'ghost'}
+            variant={activeTab === 'history' ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => setView('history')}
+            onClick={() => setActiveTab('history')}
           >
             <History className="mr-2 h-4 w-4" />
             History
@@ -542,166 +666,8 @@ export default function Home() {
       </header>
 
       <main className="flex-1 p-4 md:p-6">
-        {view === 'upload' ? (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="flex flex-col gap-6">
-              <Card
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                className="flex-1"
-              >
-                <CardHeader>
-                  <CardTitle>Upload Log File</CardTitle>
-                  <CardDescription>
-                    Drag & drop a file or click to upload (.log, .txt, .json, max 5MB)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center text-center p-6 pt-0">
-                  <div className="w-full rounded-lg border-2 border-dashed border-border p-12">
-                    <Inbox className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <p className="mt-4 text-sm text-muted-foreground">
-                      Drag your file here or
-                    </p>
-                    <input
-                      type="file"
-                      id="file-upload"
-                      className="sr-only"
-                      onChange={e => handleFileChange(e.target.files ? e.target.files[0] : null)}
-                      accept=".log,.txt,.json"
-                    />
-                    <Button asChild variant="link" className="p-0 h-auto">
-                      <label htmlFor="file-upload">browse files</label>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {fileContent && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <CardTitle>Log Content</CardTitle>
-                        <CardDescription>{file?.name}</CardDescription>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="redaction-toggle"
-                          checked={isRedacted}
-                          onCheckedChange={setIsRedacted}
-                        />
-                        <Label htmlFor="redaction-toggle">Redact PII</Label>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-72 w-full rounded-md border p-4">
-                      <pre className="text-sm font-code whitespace-pre-wrap">
-                        <code>
-                          {isRedacted ? redactedContent : fileContent}
-                        </code>
-                      </pre>
-                    </ScrollArea>
-                    {file && (
-                      <div className="mt-4 flex justify-end">
-                        <Button onClick={() => handleAnalysis()} disabled={isLoading || isMasking}>
-                          {(isLoading || isMasking) ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              {isLoading ? 'Analyzing...' : 'Masking...'}
-                            </>
-                          ) : (
-                            'Analyze Log'
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-            <div className="flex flex-col gap-6">
-              <Card className="flex-1">
-                <CardHeader>
-                  <CardTitle>Analysis Results</CardTitle>
-                  <CardDescription>
-                    AI-powered insights into your log data.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading && (
-                    <div className="flex flex-col items-center justify-center h-full gap-4">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <p className="text-muted-foreground">AI is thinking...</p>
-                    </div>
-                  )}
-                  {analysisResult && renderAnalysisResult(analysisResult)}
-                  {!isLoading && !analysisResult && (
-                     <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground p-12">
-                       <Sparkles className="h-10 w-10 mb-4" />
-                       <p className="font-medium">Your insights will appear here</p>
-                       <p className="text-sm">Upload a log file to get started.</p>
-                     </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {(isMasking || maskingResult) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <EyeOff className="h-5 w-5" />
-                      Sensitive Data Masking
-                    </CardTitle>
-                    <CardDescription>
-                      AI has detected and masked the following sensitive information.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isMasking && !maskingResult && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Scanning for sensitive data...</span>
-                      </div>
-                    )}
-                    {maskingResult && (
-                      <>
-                        <ScrollArea className="h-48 w-full rounded-md border">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Original Value</TableHead>
-                                <TableHead>Masked Value</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {maskingResult.redactions.map((item, index) => (
-                                <TableRow key={index}>
-                                  <TableCell className="font-mono text-xs text-red-600 truncate max-w-xs">{item.original}</TableCell>
-                                  <TableCell className="font-mono text-xs text-green-600">{item.masked}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                          {maskingResult.redactions.length === 0 && (
-                            <div className="p-4 text-center text-sm text-muted-foreground">
-                              No sensitive data found to mask.
-                            </div>
-                          )}
-                        </ScrollArea>
-                        <div className="mt-4 flex justify-end">
-                          <Button onClick={downloadMaskedLog} variant="outline" disabled={!maskingResult}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Download Masked Log
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
+        {activeTab === 'upload' ? (
+          viewState === 'upload' ? renderUpload() : renderDashboard()
         ) : (
           <Card>
             <CardHeader>

@@ -8,6 +8,7 @@ export interface MaskingResult {
   redactions: {
     original: string;
     masked: string;
+    lineNumber: number;
   }[];
 }
 
@@ -18,7 +19,7 @@ export interface LogHistoryEntry {
   fileSize: string;
   hash: string;
   analysis: LogAnalysisResult;
-  content: string;
+  content: string; // This will store the original, unmasked content
 }
 
 export type CacheCheckResult = IntelligtlyCacheAIResultsOutput;

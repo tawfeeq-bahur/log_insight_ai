@@ -78,36 +78,7 @@ export async function performMasking(
 ): Promise<MaskingResult> {
   try {
     const originalContent = input.logContent;
-    const maskedLog = redactSensitiveData(originalContent);
-    
-    const redactions: { original: string; masked: string }[] = [];
-    
-    // Split content into lines to compare
-    const originalLines = originalContent.split('\n');
-    const maskedLines = maskedLog.split('\n');
-
-    originalLines.forEach((originalLine, i) => {
-        if (i < maskedLines.length && originalLine !== maskedLines[i]) {
-            // Find what changed in the line
-            const originalWords = originalLine.trim().split(/(\s+|",|",\s*|":\s*)/);
-            const maskedWords = maskedLines[i].trim().split(/(\s+|",|",\s*|":\s*)/);
-
-            originalWords.forEach((originalWord, j) => {
-                if (j < maskedWords.length && originalWord !== maskedWords[j] && originalWord.length > 1 && maskedWords[j] === 'xxxxxx') {
-                    const keyPart = originalWords.slice(0, j).join('').match(/["']?([\w_]+)["']?\s*:\s*$/);
-                    const key = keyPart ? keyPart[1] : 'Value';
-                    redactions.push({
-                        original: `${key}: ${originalWord}`,
-                        masked: `${key}: xxxxxx`
-                    });
-                }
-            });
-        }
-    });
-
-    if (redactions.length === 0 && originalContent !== maskedLog) {
-      redactions.push({ original: "Sensitive value(s)", masked: "xxxxxx" });
-    }
+    const { maskedLog, redactions } = redactSensitiveData(originalContent);
 
     return { maskedLog, redactions };
   } catch (error) {
