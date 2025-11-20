@@ -58,7 +58,7 @@ const ExplainLogRootCauseOutputSchema = z.object({
   securityAlerts: z.array(SecurityAlertItemSchema).describe('A summary of security-related alerts.'),
   keyStatistics: z.array(KeyStatisticItemSchema).describe('A table of key statistics and their counts.'),
   finalConclusion: z.object({
-    summary: z.string().describe('A summary of the system\'s state based on the logs.'),
+    summary: z.string().describe("A summary of the system's state based on the logs."),
     recommendations: z.array(z.string()).describe('A list of recommendations.'),
   }).describe('The final conclusion and recommendations.'),
   // Legacy fields for compatibility, can be populated from the new structure.
