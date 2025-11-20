@@ -77,6 +77,26 @@ const prompt = ai.definePrompt({
   name: 'explainLogRootCausePrompt',
   input: {schema: ExplainLogRootCauseInputSchema},
   output: {schema: ExplainLogRootCauseOutputSchema},
+  config: {
+    safetySettings: [
+        {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_NONE',
+        },
+        {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_NONE',
+        },
+        {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_NONE',
+        },
+        {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_NONE',
+        },
+    ],
+  },
   prompt: `Analyze the following log file content and provide a comprehensive, structured analysis in JSON format.
 
 Log Content:
