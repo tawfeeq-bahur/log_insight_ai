@@ -77,7 +77,7 @@ const prompt = ai.definePrompt({
   name: 'explainLogRootCausePrompt',
   input: {schema: ExplainLogRootCauseInputSchema},
   output: {schema: ExplainLogRootCauseOutputSchema},
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-pro',
   config: {
     safetySettings: [
         {
@@ -138,6 +138,9 @@ const explainLogRootCauseFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('AI analysis returned an empty response.');
+    }
+    return output;
   }
 );
